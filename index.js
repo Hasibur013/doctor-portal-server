@@ -5,6 +5,7 @@ require('dotenv').config()
 const { MongoClient } = require('mongodb');
 const ObjectId = require('mongodb').ObjectId;
 const stripe = require("stripe")(process.env.STRIPE_SECRET)
+const fileUpload=require('express-fileupload')
 
 
 const port = process.env.PORT || 5000
@@ -13,6 +14,7 @@ const port = process.env.PORT || 5000
 // middleware
 app.use(cors())
 app.use(express.json())
+app.use(fileUpload())
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.towtc.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -24,6 +26,7 @@ async function run() {
         const database = client.db('Doctor_Portal')
         const appointmentsCollection = database.collection('appointments')
         const usersCollection = database.collection('users')
+        const doctorsCollection = database.collection('doctors')
 
         app.post('/appointments', async (req, res) => {
             const appointment = req.body;
@@ -116,6 +119,30 @@ async function run() {
             }
             const result=await appointmentsCollection.updateOne(filter,updateDoc)
             res.json(result)
+          })
+
+          // for upload photo
+          app.post('/doctors',async(req,res)=>{
+            const name=req.body.name;
+            const email=req.body.email;
+            const pic=req.files.image;
+            const picData=pic.data;
+            const encodePic=picData.toString('base64')
+            const imageBuffer=Buffer.from(encodePic,'base64')
+            const doctor={
+                name,
+                email,
+                image: imageBuffer
+            }
+            const result=await doctorsCollection.insertOne(doctor)
+            res.json(result)
+          })
+
+          // get photo
+          app.get('/doctors',async(req,res)=>{
+              const cursor=doctorsCollection.find({})
+              const doctors= await cursor.toArray()
+              res.json(doctors)
           })
 
         
